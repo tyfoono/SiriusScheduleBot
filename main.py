@@ -1,6 +1,4 @@
-import os
-
-TOKEN = os.getenv("TOKEN")
+TOKEN = "7554954438:AAEBbAjiHkkRPDDTwc9pzkw2Pn3skF1PreU"
 
 from telebot import TeleBot, types
 
@@ -11,8 +9,6 @@ def help_universal(user_id):
                 "Команда /tomorrow — занятия на завтра.\n" + \
                 "Команда /week — расписание на всю неделю.\n" + \
                 "Команда /add — добавить событие."
-
-    markup = types.InlineKeyboardMarkup()
 
     bot.send_message(
         user_id,
@@ -44,4 +40,4 @@ def schedule_command_handler(message):
                 "/add название-события дд-мм-гггг чч::мм"
     bot.send_message(message.from_user.id, message_text)
 
-bot.polling()
+bot.polling(non_stop=True)
