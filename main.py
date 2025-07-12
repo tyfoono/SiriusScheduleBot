@@ -1,6 +1,7 @@
 TOKEN = "7554954438:AAEBbAjiHkkRPDDTwc9pzkw2Pn3skF1PreU"
 
 from telebot import TeleBot, types
+import api
 
 bot = TeleBot(TOKEN)
 
@@ -9,7 +10,6 @@ def help_universal(user_id):
                 "Команда /tomorrow — занятия на завтра.\n" + \
                 "Команда /week — расписание на всю неделю.\n" + \
                 "Команда /add — добавить событие."
-
     bot.send_message(
         user_id,
         message_text
@@ -38,6 +38,13 @@ def start_command_handler(message):
 def schedule_command_handler(message):
     message_text = "Для добавления нового события используйте комманду /add в формате:\n" \
                 "/add название-события дд-мм-гггг чч::мм"
-    bot.send_message(message.from_user.id, message_text)
+    bot.send_message(message.from_user.id, message_text) 
+
+@bot.message_handler(commands=["add"])
+def add_command_handler(message):
+    command = message.entities[0]
+    args = message.text[command.length:].strip()
+
+    bot.send_message(message.from_user.id, args)
 
 bot.polling(non_stop=True)
