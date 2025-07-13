@@ -104,7 +104,6 @@ class Event:
         reminder_date: datetime.date,
         reminder_sent: bool = False,
     ):
-        self.id = id
         self.user_id = user_id
         self.title = title
         self.start_time = start_time
@@ -123,7 +122,7 @@ def add_event(event):
         cur.execute(
             """
             INSERT INTO events 
-            (user_id, title, event_date, start_time, reminder_date)
+            (user_id, title, event_date, start_time, reminder_date, reminder_sent)
             VALUES (?, ?, ?, ?, ?)
             """,
             event.user_id,
@@ -131,6 +130,7 @@ def add_event(event):
             event.event_date,
             event.start_time,
             event.reminder_date,
+            False,
         )
         con.commit()
 
@@ -141,18 +141,39 @@ def add_event(user_id, title, event_date, start_time, reminder_date):
         cur.execute(
             """
             INSERT INTO events 
-            (user_id, title, event_date, start_time, reminder_date)
-            VALUES (?, ?, ?, ?, ?)
+            (id, user_id, title, event_date, start_time, reminder_date, reminder_sent)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (
-                user_id,
-                title,
-                event_date,
-                start_time,
-                reminder_date,
-            ),
+            (cur.lastrowid, user_id, title, event_date, start_time, reminder_date, False),
         )
         con.commit()
         return Event(
             cur.lastrowid, user_id, title, event_date, start_time, reminder_date
         )
+
+
+def mark_reminder_sent(event_id):
+    with sqlite3.connect("database.db") as con:
+        cur = con.cursor()
+        cur.execute("UPDATE events SET reminder_sent = 1 WHERE id = ?", (event_id,))
+        con.commit()
+
+
+def get_due_reminders():
+    now = datetime.datetime.now()
+    current_date = now.date().isoformat()
+    current_time = now.time().strftime("%H:%M")
+
+    with sqlite3.connect("database.db") as con:
+        cur = con.cursor()
+        cur.execute(
+            """
+            SELECT id, user_id, title 
+            FROM events 
+            WHERE reminder_date = ? 
+            AND start_time <= ?
+            AND reminder_sent = 0
+            """,
+            (current_date, current_time),
+        )
+        return cur.fetchall()
