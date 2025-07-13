@@ -8,18 +8,61 @@ import api
 
 bot = TeleBot(TOKEN)
 
+weekdays = {
+    1: "Понедельник",
+    2: "Вторник",
+    3: "Среда",
+    4: "Четверг",
+    5: "Пятница",
+    6: "Суббота",
+    7: "Воскресенье",
+}
+
+
+def get_schedule_message(user_id: int, day: datetime.date):
+    group_info = api.get_user_group(int(user_id))
+    
+    if group_info is None:
+        return (
+            "Группа не установлена!\n\n"
+            "Пожалуйста, установите свою группу с помощью команды:\n"
+            "/set_group название_группы\n"
+            "Пример: /set_group К1"
+        )
+    
+    group_id = group_info[0]
+    schedule = api.get_day_schedule(day, group_id, int(user_id))
+
+    message_text = (
+        f"Расписание на {weekdays.get(day.isoweekday())} {day}\n\n" "Занятия: \n\n"
+    )
+
+    if schedule.get("classes"):
+        for i in range(len(schedule.get("classes"))):
+            message_text += f"{i + 1}. {schedule.get("classes")[i]}\n\n"
+    else:
+        message_text += "Нет занятий в этот день\n\n"
+
+    message_text += "\nМероприятия: \n"
+
+    if schedule.get("events"):
+        for i in range(len(schedule.get("events"))):
+            message_text += f"{i + 1}. {schedule.get("events")[i]}\n\n"
+    else:
+        message_text += "Нет мероприятий в этот день"
+
+    return message_text
+
 
 def help_universal(user_id):
     message_text = (
         "Команда /today выводит занятия на текущий день.\n"
         "Команда /tomorrow — занятия на завтра.\n"
         "Команда /week — расписание на всю неделю.\n\n"
-
-        "Команда /add — добавить событие. \n",
+        "Команда /add название дата время — добавить событие. \n"
         "Команда /schedule - помощь в добавлении события.\n\n"
-
-        "Команда /set_group - выбрать номер группы.\n"
-        "Команда /search_teacher - поиск расписания преподавателя."
+        "Команда /set_group название-группы - выбрать номер группы.\n"
+        "Команда /search_teacher фамилия - поиск расписания преподавателя."
     )
     bot.send_message(user_id, message_text)
 
@@ -41,9 +84,50 @@ def start_command_handler(message):
     markup.add(button)
     bot.send_message(
         message.from_user.id,
-        f"Бот, который поможет вам держать расписание под контролем! Нажмите кнопку внизу, чтобы увидеть список доступных комманд.",
+        f'Для начала работы используйте команду "/set_group название" или нажмите на кнопку ниже!',
         reply_markup=markup,
     )
+
+
+@bot.message_handler(commands=["set_group"])
+def set_group_command_handler(message):
+    try:
+        group_name = message.text.split(maxsplit=1)[1].strip()
+        user_id = message.from_user.id
+
+        group_id = api.get_group_id(group_name)
+
+        if group_id is None:
+            bot.send_message(
+                user_id,
+                f"Группа '{group_name}' не найдена. Проверьте название и попробуйте снова.",
+            )
+            return
+
+        current_group = api.get_user_group(user_id)
+
+        if current_group:
+            api.update_user_group(user_id, group_id)
+            response = f"Ваша группа успешно изменена на '{group_name}'!"
+        else:
+            api.set_user_group(user_id, group_id)
+            response = f"Группа '{group_name}' успешно установлена!"
+
+        bot.send_message(user_id, response)
+
+    except IndexError:
+        bot.send_message(
+            user_id,
+            "Пожалуйста, укажите название группы после команды.\n"
+            "Формат: /set_group <название_группы>\n"
+            "Пример: /set_group ИУ5-32Б",
+        )
+    except Exception as e:
+        print(f"Error setting group: {e}")
+        bot.send_message(
+            user_id,
+            "Произошла ошибка при обработке вашего запроса. Пожалуйста, попробуйте позже.",
+        )
 
 
 @bot.message_handler(commands=["schedule"])
@@ -95,6 +179,22 @@ def add_command_handler(message):
         print(f"Error: {e}")
 
     bot.send_message(message.from_user.id, response)
+
+
+@bot.message_handler(commands=["today"])
+def today_command_handler(message):
+    user_id = message.from_user.id
+    day = datetime.today().date()
+    message_text = get_schedule_message(user_id, day)
+    bot.send_message(user_id, message_text)
+
+
+@bot.message_handler(commands=["tomorrow"])
+def tomorrow_command_handler(message):
+    user_id = message.from_user.id
+    day = datetime.today().date() + timedelta(days=1)
+    message_text = get_schedule_message(user_id, day)
+    bot.send_message(user_id, message_text)
 
 
 def reminder_scheduler():

@@ -2,13 +2,56 @@ import sqlite3
 import datetime
 
 
+def get_user_group(user_id: int) -> tuple | None:
+    with sqlite3.connect("database.db") as con:
+        cur = con.cursor()
+        group = cur.execute(
+            """SELECT 
+            u.group_id, 
+            g.name 
+            FROM users u
+            INNER JOIN groups g ON u.group_id = g.id
+            WHERE u.user_id = (?)""",
+            (user_id,),
+        ).fetchone()
+    return group
+
+
+def set_user_group(user_id: int, group_id: int):
+    with sqlite3.connect("database.db") as con:
+        cur = con.cursor()
+        cur.execute("INSERT INTO users (id, group_id) VALUES (?, ?)", (user_id, group_id))
+        con.commit()
+
+
+def get_group_id(group_name: str):
+    group_id = None
+    with sqlite3.connect("database.db") as con:
+        cur = con.cursor()
+        group_id = cur.execute(
+            f"SELECT id FROM groups WHERE name = ?",(group_name,)
+        ).fetchone()[0]
+
+    return group_id
+
+
+def update_user_group(user_id: int, group_id: int):
+    with sqlite3.connect("database.db") as con:
+        cur = con.cursor()
+        row = """UPDATE users
+                SET group_id = ?
+                WHERE user_id = ?"""
+        cur.execute(row, (group_id, user_id))
+        con.commit()
+
+
 def get_teacher_name(teacher_id: int) -> tuple:
     teacher_name = "Не удалось получить имя преподавателя"
 
     with sqlite3.connect("database.db") as con:
         cur = con.cursor()
         teacher_name = cur.execute(
-            f"SELECT surname, first_name FROM teachers WHERE id = {teacher_id}"
+            f"SELECT surname, first_name FROM teachers WHERE id = ?", (teacher_id,)
         ).fetchone()
         con.commit()
     return teacher_name
@@ -20,7 +63,7 @@ def get_subject_name(subjects_id: int) -> str:
     with sqlite3.connect("database.db") as con:
         cur = con.cursor()
         subject_name = cur.execute(
-            f"SELECT name FROM subjects WHERE id = {subjects_id}"
+            f"SELECT name FROM subjects WHERE id = ?", (subjects_id,)
         ).fetchone()[0]
         con.commit()
     return subject_name
@@ -54,8 +97,8 @@ def get_class(class_id: int):
         teacher=row[1],
         subject=row[2],
         day_of_week=row[3],
-        start_time=datetime.datetime.strptime(row[4], "%H:%M:%S").time(),
-        end_time=datetime.datetime.strptime(row[5], "%H:%M:%S").time(),
+        start_time=datetime.datetime.strptime(row[4], "%H:%M").time(),
+        end_time=datetime.datetime.strptime(row[5], "%H:%M").time(),
         location=row[6],
     )
 
@@ -228,6 +271,7 @@ def get_day_class_ids(week_day: int, group_id: int):
             FROM classes 
             WHERE day_of_week = ?
             AND group_id = ?
+            ORDER BY start_time
             """,
             (week_day, group_id),
         )
@@ -244,7 +288,7 @@ def get_day_event_ids(date: datetime.date, user_id: int):
             FROM events
             WHERE user_id = ?
             AND event_date = ?
-            """,
+            ORDER BY start_time""",
             (user_id, date.isoformat()),
         )
         return cur.fetchall()
@@ -258,10 +302,10 @@ def get_day_schedule(date: datetime.date, group_id: int, user_id: int):
 
     if class_ids:
         for i in class_ids:
-            schedule["classes"].append(get_class(i))
-        
+            schedule["classes"].append(get_class(i[0]))
+
     if event_ids:
         for i in event_ids:
-            schedule["events"].append(get_event(i))
-    
+            schedule["events"].append(get_event(i[0]))
+
     return schedule
