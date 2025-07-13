@@ -26,7 +26,7 @@ def get_subject_name(subjects_id: int) -> str:
     return subject_name
 
 
-def import_class(class_id: int):
+def get_class(class_id: int):
     with sqlite3.connect("database.db") as con:
         cur = con.cursor()
         row = cur.execute(
@@ -57,6 +57,36 @@ def import_class(class_id: int):
         start_time=datetime.datetime.strptime(row[4], "%H:%M:%S").time(),
         end_time=datetime.datetime.strptime(row[5], "%H:%M:%S").time(),
         location=row[6],
+    )
+
+
+def get_event(event_id: int):
+    with sqlite3.connect("database.db") as con:
+        cur = con.cursor()
+        row = cur.execute(
+            """
+            SELECT 
+                e.title,
+                e.event_date,
+                e.start_time,
+                e.reminder_date,
+                e.user_id
+            FROM events e
+            WHERE e.id = ?
+            """,
+            (event_id,),
+        ).fetchone()
+
+    if not row:
+        return None
+
+    return Event(
+        id=event_id,
+        title=row[0],
+        event_date=row[1],
+        start_time=row[2],
+        reminder_date=row[3],
+        user_id=int(row[4]),
     )
 
 
@@ -99,11 +129,12 @@ class Event:
         id: int,
         user_id: int,
         title: str,
-        event_date: datetime.date,
-        start_time: datetime.time,
-        reminder_date: datetime.date,
+        event_date: str | datetime.date,
+        start_time: str | datetime.time,
+        reminder_date: str | datetime.date,
         reminder_sent: bool = False,
     ):
+        self.id = id
         self.user_id = user_id
         self.title = title
         self.start_time = start_time
@@ -144,7 +175,15 @@ def add_event(user_id, title, event_date, start_time, reminder_date):
             (id, user_id, title, event_date, start_time, reminder_date, reminder_sent)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (cur.lastrowid, user_id, title, event_date, start_time, reminder_date, False),
+            (
+                cur.lastrowid,
+                user_id,
+                title,
+                event_date,
+                start_time,
+                reminder_date,
+                False,
+            ),
         )
         con.commit()
         return Event(
@@ -177,3 +216,42 @@ def get_due_reminders():
             (current_date, current_time),
         )
         return cur.fetchall()
+
+
+def get_day_classes(week_day: int, group_id: int):
+    with sqlite3.connect("database.db") as con:
+        cur = con.cursor()
+
+        cur.execute(
+            """
+            SELECT id
+            FROM classes 
+            WHERE day_of_week = ?
+            AND group_id = ?
+            """,
+            (week_day, group_id),
+        )
+        return cur.fetchall()
+
+
+def get_day_events(date: datetime.date, user_id: int):
+    with sqlite3.connect("database.db") as con:
+        cur = con.cursor()
+
+        cur.execute(
+            """
+            SELECT id 
+            FROM events
+            WHERE user_id = ?
+            AND event_date = ?
+            """,
+            (user_id, date.isoformat()),
+        )
+        return cur.fetchall()
+
+
+def get_day_schedule(date: datetime.date, group_id: int, user_id: int):
+    class_ids = get_day_classes(date.isoweekday(), group_id)
+    event_ids = get_day_events(date, user_id)
+    with sqlite3.connect("database.db") as con:
+        cur = con.cursor()
