@@ -10,7 +10,7 @@ def get_teacher_name(teacher_id: int) -> tuple:
         teacher_name = cur.execute(
             f"SELECT surname, first_name FROM teachers WHERE id = {teacher_id}"
         ).fetchone()
-
+        con.commit()
     return teacher_name
 
 
@@ -22,7 +22,7 @@ def get_subject_name(subjects_id: int) -> str:
         subject_name = cur.execute(
             f"SELECT name FROM subjects WHERE id = {subjects_id}"
         ).fetchone()[0]
-
+        con.commit()
     return subject_name
 
 
@@ -97,23 +97,23 @@ class Event:
     def __init__(
         self,
         id: int,
+        user_id: int,
         title: str,
         event_date: datetime.date,
         start_time: datetime.time,
-        location: str,
         reminder_date: datetime.date,
-        reminder_time: datetime.time,
+        reminder_sent: bool = False,
     ):
         self.id = id
+        self.user_id = user_id
         self.title = title
         self.start_time = start_time
-        self.location = location
         self.event_date = event_date
         self.reminder_date = reminder_date
-        self.reminder_time = reminder_time
+        self.reminder_sent = reminder_sent
 
     def __str__(self):
-        result = ""
+        result = f"{self.title}\n" + f"{self.event_date}, {self.start_time}"
         return result
 
 
@@ -123,13 +123,36 @@ def add_event(event):
         cur.execute(
             """
             INSERT INTO events 
-            (title, event_date, start_time, location, reminder_date, reminder_time)
-            VALUES (?, ?, ?, ?, ?, ?)
+            (user_id, title, event_date, start_time, reminder_date)
+            VALUES (?, ?, ?, ?, ?)
             """,
+            event.user_id,
             event.title,
             event.event_date,
             event.start_time,
-            event.location,
             event.reminder_date,
-            event.reminder_time,
+        )
+        con.commit()
+
+
+def add_event(user_id, title, event_date, start_time, reminder_date):
+    with sqlite3.connect("database.db") as con:
+        cur = con.cursor()
+        cur.execute(
+            """
+            INSERT INTO events 
+            (user_id, title, event_date, start_time, reminder_date)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                user_id,
+                title,
+                event_date,
+                start_time,
+                reminder_date,
+            ),
+        )
+        con.commit()
+        return Event(
+            cur.lastrowid, user_id, title, event_date, start_time, reminder_date
         )
