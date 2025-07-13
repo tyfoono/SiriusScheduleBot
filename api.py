@@ -218,7 +218,7 @@ def get_due_reminders():
         return cur.fetchall()
 
 
-def get_day_classes(week_day: int, group_id: int):
+def get_day_class_ids(week_day: int, group_id: int):
     with sqlite3.connect("database.db") as con:
         cur = con.cursor()
 
@@ -234,7 +234,7 @@ def get_day_classes(week_day: int, group_id: int):
         return cur.fetchall()
 
 
-def get_day_events(date: datetime.date, user_id: int):
+def get_day_event_ids(date: datetime.date, user_id: int):
     with sqlite3.connect("database.db") as con:
         cur = con.cursor()
 
@@ -251,7 +251,17 @@ def get_day_events(date: datetime.date, user_id: int):
 
 
 def get_day_schedule(date: datetime.date, group_id: int, user_id: int):
-    class_ids = get_day_classes(date.isoweekday(), group_id)
-    event_ids = get_day_events(date, user_id)
-    with sqlite3.connect("database.db") as con:
-        cur = con.cursor()
+    class_ids = get_day_class_ids(date.isoweekday(), group_id)
+    event_ids = get_day_event_ids(date, user_id)
+
+    schedule = {"classes": [], "events": []}
+
+    if class_ids:
+        for i in class_ids:
+            schedule["classes"].append(get_class(i))
+        
+    if event_ids:
+        for i in event_ids:
+            schedule["events"].append(get_event(i))
+    
+    return schedule
