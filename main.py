@@ -1,5 +1,3 @@
-TOKEN = "7554954438:AAEBbAjiHkkRPDDTwc9pzkw2Pn3skF1PreU"
-
 import threading
 from telebot import TeleBot, types
 from datetime import date, timedelta, datetime
