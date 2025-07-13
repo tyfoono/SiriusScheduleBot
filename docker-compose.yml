@@ -3,8 +3,12 @@ services:
     build: .
     volumes:
       - database_volume:/app/database.db
+    entrypoint: >
+      sh -c "if [ ! -f /app/database.db ]; then
+        cp /initial_db/database.db /app/database.db;
+      fi;
+      python main.py"
     restart: unless-stopped
 
 volumes:
   database_volume:
-    name: telegram-bot-db
