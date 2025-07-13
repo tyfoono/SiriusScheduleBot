@@ -109,15 +109,13 @@ def get_group_name(group_id: int) -> str:
         return result[0] if result else "Неизвестная группа"
 
 
-def get_group_id(group_id: int):
+def get_group_id(group_name: str) -> int | None:
     with sqlite3.connect("database.db") as con:
         cur = con.cursor()
         result = cur.execute(
-            "SELECT name FROM groups WHERE id = ?", (group_id,)
+            "SELECT id FROM groups WHERE LOWER(name) = LOWER(?)", (group_name,)
         ).fetchone()
-        if result:
-            return result[0]
-        return None
+        return result[0] if result else None
 
 
 def update_user_group(user_id: int, group_id: int):
@@ -131,13 +129,21 @@ def update_user_group(user_id: int, group_id: int):
 
 
 def get_teacher_id(surname: str) -> int | None:
+    if not surname:
+        return None
+
+    surname_clean = surname.strip().lower()
     with sqlite3.connect("database.db") as con:
         cur = con.cursor()
-        result = cur.execute(
-            "SELECT id FROM teachers WHERE LOWER(surname) = LOWER(?)", (surname,)
-        ).fetchone()
-    return result[0] if result else None
-
+        try:
+            cur.execute(
+                "SELECT id FROM teachers WHERE LOWER(TRIM(surname)) = ?", 
+                (surname_clean,),
+            )
+            result = cur.fetchone()
+            return result[0] if result else None
+        except sqlite3.Error as e:
+            return None
 
 def get_teacher_name(teacher_id: int) -> tuple:
     with sqlite3.connect("database.db") as con:
