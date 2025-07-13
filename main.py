@@ -19,37 +19,51 @@ weekdays = {
 }
 
 
-def get_schedule_message(user_id: int, day: datetime.date):
-    group_info = api.get_user_group(int(user_id))
+def get_schedule_message(
+    user_id: int, day: datetime.date, teacher_id: int | None = None
+):
+    if not teacher_id:
+        group_info = api.get_user_group(int(user_id))
 
-    if group_info is None:
-        return (
-            "Группа не установлена!\n\n"
-            "Пожалуйста, установите свою группу с помощью команды:\n"
-            "/set_group название_группы\n"
-            "Пример: /set_group К1"
+        if group_info is None:
+            return (
+                "Группа не установлена!\n\n"
+                "Пожалуйста, установите свою группу с помощью команды:\n"
+                "/set_group название_группы\n"
+                "Пример: /set_group К1"
+            )
+
+        group_id = group_info[0]
+        schedule = api.get_day_schedule(day, group_id, int(user_id))
+
+        message_text = (
+            f"Расписание на {weekdays.get(day.isoweekday())} {day}\n\n" "Занятия: \n\n"
         )
 
-    group_id = group_info[0]
-    schedule = api.get_day_schedule(day, group_id, int(user_id))
+        if schedule.get("classes"):
+            for i in range(len(schedule.get("classes"))):
+                message_text += f"{i + 1}. {schedule.get("classes")[i]}\n\n"
+        else:
+            message_text += "Нет занятий в этот день\n\n"
 
-    message_text = (
-        f"Расписание на {weekdays.get(day.isoweekday())} {day}\n\n" "Занятия: \n\n"
-    )
+        message_text += "\nМероприятия: \n"
 
-    if schedule.get("classes"):
-        for i in range(len(schedule.get("classes"))):
-            message_text += f"{i + 1}. {schedule.get("classes")[i]}\n\n"
+        if schedule.get("events"):
+            for i in range(len(schedule.get("events"))):
+                message_text += f"{i + 1}. {schedule.get("events")[i]}\n\n"
+        else:
+            message_text += "Нет мероприятий в этот день"
+
     else:
-        message_text += "Нет занятий в этот день\n\n"
+        schedule = api.get_teacher_day(day, teacher_id)
 
-    message_text += "\nМероприятия: \n"
+        message_text = f"Расписание на {weekdays.get(day.isoweekday())} {day}:\n\n"
 
-    if schedule.get("events"):
-        for i in range(len(schedule.get("events"))):
-            message_text += f"{i + 1}. {schedule.get("events")[i]}\n\n"
-    else:
-        message_text += "Нет мероприятий в этот день"
+        if schedule:
+            for i in range(len(schedule)):
+                message_text += f"{i + 1}. {schedule[i]:teacher}\n\n"
+        else:
+            message_text += "Нет занятий в этот день\n\n"
 
     return message_text
 
@@ -57,9 +71,9 @@ def get_schedule_message(user_id: int, day: datetime.date):
 def help_universal(user_id):
     message_text = (
         "Команда /today выводит занятия на текущий день.\n"
-        "Команда /tomorrow — занятия на завтра.\n"
-        "Команда /week — расписание на всю неделю.\n\n"
-        "Команда /add название дата время — добавить событие. \n"
+        "Команда /tomorrow - занятия на завтра.\n"
+        "Команда /week - расписание на всю неделю.\n\n"
+        "Команда /add название дата время - добавить событие. \n"
         "Команда /schedule - помощь в добавлении события.\n\n"
         "Команда /set_group название-группы - выбрать номер группы.\n"
         "Команда /search_teacher фамилия - поиск расписания преподавателя."
@@ -78,7 +92,7 @@ def help_callback_handler(call):
 
 
 @bot.message_handler(commands=["start"])
-def start_command_handler(message):
+def start_handler(message):
     markup = types.InlineKeyboardMarkup()
     button = types.InlineKeyboardButton("Помощь", callback_data="help")
     markup.add(button)
@@ -90,7 +104,7 @@ def start_command_handler(message):
 
 
 @bot.message_handler(commands=["set_group"])
-def set_group_command_handler(message):
+def set_group_handler(message):
     try:
         group_name = message.text.split(maxsplit=1)[1].strip()
         user_id = message.from_user.id
@@ -119,8 +133,8 @@ def set_group_command_handler(message):
         bot.send_message(
             user_id,
             "Пожалуйста, укажите название группы после команды.\n"
-            "Формат: /set_group <название_группы>\n"
-            "Пример: /set_group ИУ5-32Б",
+            "Формат: /set_group название_группы\n"
+            "Пример: /set_group К1",
         )
     except Exception as e:
         print(f"Error setting group: {e}")
@@ -131,7 +145,7 @@ def set_group_command_handler(message):
 
 
 @bot.message_handler(commands=["schedule"])
-def schedule_command_handler(message):
+def schedule_handler(message):
     message_text = (
         "Для добавления нового события используйте комманду /add в формате:\n"
         "/add название(без пробелов) дата(гггг-мм-дд) время(чч::мм)"
@@ -140,7 +154,7 @@ def schedule_command_handler(message):
 
 
 @bot.message_handler(commands=["add"])
-def add_command_handler(message):
+def add_handler(message):
     try:
         args = message.text.split(maxsplit=3)[1:]
         if len(args) < 3:
@@ -182,7 +196,7 @@ def add_command_handler(message):
 
 
 @bot.message_handler(commands=["today"])
-def today_command_handler(message):
+def today_handler(message):
     user_id = message.from_user.id
     day = datetime.today().date()
     message_text = get_schedule_message(user_id, day)
@@ -190,11 +204,46 @@ def today_command_handler(message):
 
 
 @bot.message_handler(commands=["tomorrow"])
-def tomorrow_command_handler(message):  # Fixed function name
+def tomorrow_handler(message):
     user_id = message.from_user.id
     day = datetime.today().date() + timedelta(days=1)
     message_text = get_schedule_message(user_id, day)
     bot.send_message(user_id, message_text)
+
+
+@bot.message_handler(commands=["search_teacher"])
+def search_teacher_handle(message):
+    try:
+        teacher_name = message.text.split(maxsplit=1)[1].strip()
+        user_id = message.from_user.id
+
+        teacher_id = api.get_teacher_id(teacher_name.lower())
+
+        if teacher_id is None:
+            bot.send_message(
+                user_id,
+                f"Учитель с фамилией {teacher_name} не найден. Проверьте написание фамилии и попробуйте снова.",
+            )
+            return
+
+        day = datetime.today().date()
+        message_text = get_schedule_message(user_id, day, teacher_id)
+        
+        bot.send_message(user_id, message_text)
+
+    except IndexError:
+        bot.send_message(
+            user_id,
+            "Пожалуйста, укажите фамилию учителя после комманды.\n"
+            "Формат: /search_teacher фамилия\n"
+            "Пример: /search_teacher Иванов",
+        )
+    except Exception as e:
+        print(f"Error setting group: {e}")
+        bot.send_message(
+            user_id,
+            "Произошла ошибка при обработке вашего запроса. Пожалуйста, попробуйте позже.",
+        )
 
 
 def reminder_scheduler():
@@ -214,7 +263,6 @@ def reminder_scheduler():
             print(f"Reminder scheduler error: {e}")
 
         time.sleep(60)
-
 
 threading.Thread(target=reminder_scheduler, daemon=True).start()
 
