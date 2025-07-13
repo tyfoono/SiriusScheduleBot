@@ -10,29 +10,33 @@ def get_user_group(user_id: int) -> tuple | None:
             u.group_id, 
             g.name 
             FROM users u
-            INNER JOIN groups g ON u.group_id = g.id
-            WHERE u.user_id = (?)""",
+            LEFT JOIN groups g ON u.group_id = g.id
+            WHERE u.user_id = ?""",
             (user_id,),
         ).fetchone()
+        
+        if group and group[0] is None:
+            return None
+            
     return group
 
 
 def set_user_group(user_id: int, group_id: int):
     with sqlite3.connect("database.db") as con:
         cur = con.cursor()
-        cur.execute("INSERT INTO users (id, group_id) VALUES (?, ?)", (user_id, group_id))
+        cur.execute("INSERT INTO users (user_id, group_id) VALUES (?, ?)", (user_id, group_id))
         con.commit()
 
 
 def get_group_id(group_name: str):
-    group_id = None
     with sqlite3.connect("database.db") as con:
         cur = con.cursor()
-        group_id = cur.execute(
-            f"SELECT id FROM groups WHERE name = ?",(group_name,)
-        ).fetchone()[0]
-
-    return group_id
+        result = cur.execute(
+            "SELECT id FROM groups WHERE name = ?", (group_name,)
+        ).fetchone()
+        if result:
+            return result[0]
+        return None
 
 
 def update_user_group(user_id: int, group_id: int):

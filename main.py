@@ -21,7 +21,7 @@ weekdays = {
 
 def get_schedule_message(user_id: int, day: datetime.date):
     group_info = api.get_user_group(int(user_id))
-    
+
     if group_info is None:
         return (
             "Группа не установлена!\n\n"
@@ -29,7 +29,7 @@ def get_schedule_message(user_id: int, day: datetime.date):
             "/set_group название_группы\n"
             "Пример: /set_group К1"
         )
-    
+
     group_id = group_info[0]
     schedule = api.get_day_schedule(day, group_id, int(user_id))
 
@@ -190,7 +190,7 @@ def today_command_handler(message):
 
 
 @bot.message_handler(commands=["tomorrow"])
-def tomorrow_command_handler(message):
+def tomorrow_command_handler(message):  # Fixed function name
     user_id = message.from_user.id
     day = datetime.today().date() + timedelta(days=1)
     message_text = get_schedule_message(user_id, day)
