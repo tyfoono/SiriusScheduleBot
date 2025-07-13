@@ -104,8 +104,7 @@ def get_group_name(group_id: int) -> str:
     with sqlite3.connect("database.db") as con:
         cur = con.cursor()
         result = cur.execute(
-            "SELECT name FROM groups WHERE id = ?", 
-            (group_id,)
+            "SELECT name FROM groups WHERE id = ?", (group_id,)
         ).fetchone()
         return result[0] if result else "Неизвестная группа"
 
@@ -144,10 +143,9 @@ def get_teacher_name(teacher_id: int) -> tuple:
     with sqlite3.connect("database.db") as con:
         cur = con.cursor()
         result = cur.execute(
-            "SELECT surname, first_name FROM teachers WHERE id = ?", 
-            (teacher_id,)
+            "SELECT surname, first_name FROM teachers WHERE id = ?", (teacher_id,)
         ).fetchone()
-        return result or ("Неизвестный", "Преподаватель")  
+        return result or ("Неизвестный", "Преподаватель")
 
 
 def get_subject_name(subjects_id: int) -> str:
@@ -366,10 +364,10 @@ def get_teacher_class_ids(week_day: int, teacher_id: int):
 def get_teacher_day(date: datetime.date, teacher_id: int):
     class_ids = get_teacher_class_ids(date.isoweekday(), teacher_id)
     schedule = []
-    
+
     for class_id in class_ids:
-        class_obj = get_class(class_id[0]) 
+        class_obj = get_class(class_id[0])
         if class_obj:
             schedule.append(class_obj)
-    
+
     return schedule

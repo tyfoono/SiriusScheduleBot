@@ -1,0 +1,10 @@
+services:
+  bot:
+    build: .
+    volumes:
+      - database_volume:/app/database.db
+    restart: unless-stopped
+
+volumes:
+  database_volume:
+    name: telegram-bot-db

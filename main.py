@@ -228,7 +228,7 @@ def search_teacher_handle(message):
 
         day = datetime.today().date()
         message_text = get_schedule_message(user_id, day, teacher_id)
-        
+
         bot.send_message(user_id, message_text)
 
     except IndexError:
@@ -263,6 +263,7 @@ def reminder_scheduler():
             print(f"Reminder scheduler error: {e}")
 
         time.sleep(60)
+
 
 threading.Thread(target=reminder_scheduler, daemon=True).start()
 
