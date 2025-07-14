@@ -4,7 +4,7 @@ from datetime import date, timedelta, datetime
 import time
 import api
 
-bot = TeleBot(TOKEN)
+bot = TeleBot("7554954438:AAHptzKUwuKOvp3WTWj3yVsEYtgN3iqLVso")
 
 weekdays = {
     1: "Понедельник",
@@ -245,14 +245,13 @@ def search_teacher_handle(message):
 
 
 def reminder_scheduler():
-    """Background task to check and send reminders"""
     while True:
         try:
             due_reminders = api.get_due_reminders()
             for event_id, user_id, title in due_reminders:
                 try:
                     bot.send_message(
-                        user_id, f"🔔 Напоминание: {title}\n" "Событие скоро начнётся!"
+                        user_id, f"Напоминание: {title}\n" "Событие скоро начнётся!"
                     )
                     api.mark_reminder_sent(event_id)
                 except Exception as e:

@@ -224,25 +224,6 @@ def get_event(event_id: int):
     )
 
 
-def add_event(event):
-    with sqlite3.connect() as con:
-        cur = con.cursor()
-        cur.execute(
-            """
-            INSERT INTO events 
-            (user_id, title, event_date, start_time, reminder_date, reminder_sent)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            event.user_id,
-            event.title,
-            event.event_date,
-            event.start_time,
-            event.reminder_date,
-            False,
-        )
-        con.commit()
-
-
 def add_event(user_id, title, event_date, start_time, reminder_date):
     with sqlite3.connect("database.db") as con:
         cur = con.cursor()
